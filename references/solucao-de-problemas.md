@@ -17,11 +17,20 @@
 - Fechar o painel pelo **X** (acima do título, à direita). O botão **voltar** fecha o painel **e sai da busca**.
 - A página do onelink (GET simples) traz `koc_id=<id da afiliada>` e `goods_id=<produto>` dentro do HTML.
 
-## Mensagens do script
+## registrar.py (iPhone/agente)
+| Resposta | Significado | Ação |
+|---|---|---|
+| `NOVO n • título` | link conferido e salvo | seguir |
+| `REPETIDO` | produto já estava na lista | seguir para o próximo |
+| `PAREI` (código 2) | link de outra afiliada | parar e avisar a pessoa |
+| `NAO CONFERIDO` | sem internet ou link inválido | tentar de novo o mesmo produto |
+| `Não achei nenhum link` | o texto copiado não tem o onelink | conferir se tocou em **Copiar** no painel certo |
+
+## Mensagens do minerador.py (Android)
 | Mensagem | Causa | Ação |
 |---|---|---|
-| `Nenhum aparelho pronto` | adb não vê nada | BlueStacks aberto com ADB ligado / cabo e depuração no celular |
-| `AVISO: a tela está deitada` | emulador em paisagem | mudar para Retrato 1080x1920 |
+| `Nenhum celular pronto` | adb não vê o Android | cabo de dados, Depuração USB, aceitar o aviso |
+| `AVISO: a tela está deitada` | celular em paisagem | deixar o celular em pé |
 | `Esta conta da SHEIN NÃO é de afiliada` | Central abriu a página de inscrição | pessoa troca para a conta de afiliada |
 | `PAREI: o link saiu com outro ID de afiliada` | koc_id diferente do config | parar e avisar; conferir conta |
 | `outro app está na frente` | ligação, notificação, outro app | não tocar em nada; o script espera e reabre a SHEIN |
@@ -30,5 +39,5 @@
 
 ## Lições do desenvolvimento (12/11/2026)
 - Ler a tela 1× por lista e gerar todos os produtos visíveis em sequência baixou de ~80 s para ~25–30 s por link.
-- `uiautomator dump` às vezes falha no emulador ("null root node"): o script apaga o arquivo antes e tenta 3×, para nunca usar uma tela velha.
+- `uiautomator dump` às vezes falha ("could not get idle state" em telas animadas como o Perfil): o script apaga o arquivo antes, tenta 3× e, se precisar, reabre o app na aba Loja.
 - Uma ligação de WhatsApp tomou a frente do celular no meio da mineração; daí a trava "só toca com a SHEIN na frente".

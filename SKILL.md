@@ -1,40 +1,52 @@
 ---
 name: shein-afiliado-minerador
-description: Gera links de afiliado SHEIN em lote (mensagem pronta no padrão do app + link onelink ..._KOC-C) controlando o app SHEIN num Android pelo adb — celular no USB ou emulador no PC (BlueStacks, o caminho para quem tem iPhone). Use quando a pessoa pedir para "minerar/gerar links de afiliado da SHEIN", "achadinhos SHEIN", "links pro grupo", "N links de vestido/blusa", retomar uma mineração ou configurar o minerador.
+description: Gera links de afiliado SHEIN em lote (mensagem pronta no padrão do app + link onelink ..._KOC-C) operando o app SHEIN no celular da pessoa — no iPhone, o próprio agente faz os toques com a ferramenta de controle do iPhone que ele já tem e o scripts/registrar.py confere e organiza; no Android, o scripts/minerador.py faz tudo pelo adb. Use quando a pessoa pedir para "minerar/gerar links de afiliado da SHEIN", "achadinhos SHEIN", "links pro grupo/agendador do zap", "N links de vestido/blusa", ou retomar uma mineração.
 ---
 
 # Minerador de links de afiliado SHEIN
 
-O Programa de Afiliados da SHEIN só existe dentro do **app** (o site diz "acessível apenas em dispositivos móveis"; não há API pública). Esta skill usa `scripts/minerador.py` (Python puro + `adb`) para abrir a Central de Afiliados, pesquisar termos, tocar em **Ganhe** em cada produto e ler o texto de compartilhamento que já traz o link de afiliado.
+O Programa de Afiliados da SHEIN só existe dentro do **app** (o site diz "acessível apenas em dispositivos móveis"; não há API pública). O link de afiliado sai pronto no painel **Compartilhe para ganhar** de cada produto.
 
 ## Regras que não mudam
-- **Nunca** digitar, pedir ou guardar senha. Login (SHEIN, Google, Play Store) é sempre a pessoa que faz, na tela do aparelho. Avise numa linha ("faça login no BlueStacks") e espere.
-- **Nunca** burlar CAPTCHA/verificação de robô. O script para, apita e confere a cada 30 s; diga à pessoa para resolver na tela.
-- **Ritmo humano**: não reduza `pausa_min_s`/`pausa_max_s` (3–8 s) nem os descansos; uma requisição por vez, sem paralelizar.
-- **ID da afiliada**: todo link é conferido pelo `koc_id` dentro da página do onelink (o `ismg_ol=..._KOC-C` muda a cada link e NÃO identifica a conta). Se o script parar com `PAREI: ... outro ID de afiliada` ou `NÃO é de afiliada`, pare tudo e avise.
-- **Segurança de toque**: o script só toca se a SHEIN estiver em primeiro plano. Não desligue isso. Se aparecer `outro app está na frente`, investigue (ligação, notificação) antes de seguir; nunca toque em outro app.
-- Nada é publicado/enviado a terceiros sem pedido explícito da pessoa.
+- **Nunca** digitar, pedir ou guardar senha. Login é sempre a pessoa que faz, na tela do celular. Avise numa linha e espere.
+- **Nunca** burlar CAPTCHA/verificação de robô. Peça para a pessoa resolver, confira a cada 30 s e continue.
+- **Ritmo humano:** 3–8 s aleatórios entre produtos e um descanso de 1–2 min a cada 25 links. Um produto por vez, nada em paralelo.
+- **ID da afiliada:** todo link é conferido pelo `koc_id` dentro da página do onelink (o `ismg_ol=..._KOC-C` muda a cada link e NÃO identifica a conta). Se aparecer `PAREI` (outra afiliada) ou a Central mostrar a inscrição "Afiliado Novo / Registre-se", pare tudo e avise.
+- **Só mexer no app SHEIN.** Se uma ligação, notificação ou outro app tomar a tela, não toque em nada: espere e volte para a SHEIN.
+- Não enviar links para ninguém nem publicar nada sem pedido explícito da pessoa.
 
-## Passo a passo para o agente
+## Pasta de trabalho
+Use uma pasta da pessoa, fora da skill (ex.: `~/shein-links`). Na 1ª vez, copie `scripts/config.exemplo.json` para `<pasta>/config.json` e ajuste `buscas`, `quantidade_alvo` e `formato_saida` (`"mensagem"` = padrão do app; `"lista"` = `01 • título` + link). `koc_id_afiliada` fica vazio na 1ª vez: o script mostra o ID detectado; confirme com a pessoa e grave.
 
-1. **Aparelho**
-   - Rode `adb devices -l`. Precisa aparecer um aparelho `device`.
-   - iPhone → não dá para controlar pelo Windows. Use emulador: BlueStacks em **Retrato 1080x1920**, **ADB ligado** (Configurações → Avançado), SHEIN instalada pela Play Store e logada na conta de afiliada. Endereço típico `127.0.0.1:5555` (vai em `"emulador"` no config). Detalhes em `references/aparelho.md`.
-   - Android no USB → Depuração USB ligada (Xiaomi: também "Depuração USB (configurações de segurança)").
-2. **Config** (pasta de trabalho da pessoa, ex.: `~/shein-links`):
-   - Copie `scripts/config.exemplo.json` para `<pasta>/config.json` e ajuste `buscas`, `quantidade_alvo`, `adb`, `emulador`, `koc_id_afiliada` (vazio na 1ª vez: o script mostra o ID detectado; confirme com a pessoa e grave).
-   - `formato_saida`: `"mensagem"` (padrão do app: "Não perca esta oferta..." + 💰Preço + 🛒título + 🎁cupom + link) ou `"lista"` (`01 • título` + link).
-3. **Teste curto**: rode com `quantidade_alvo` 10, confira os links e o `koc_id`, mostre à pessoa.
-4. **Rodada completa** (em segundo plano, com log):
-   ```bash
-   python scripts/minerador.py --pasta <pasta> > <pasta>/saida/log.txt 2>&1
-   ```
-   Vigie o log por `CAPTCHA|pediu login|PAREI|NÃO é de afiliada|outro app|Traceback|Pronto`. Progresso a cada 50 links.
-5. **Retomar**: é só rodar de novo; o progresso fica em `<pasta>/saida/progresso.json` (sem duplicados por `goods_id`).
-6. **Entrega**: `<pasta>/saida/links_shein_AAAA-MM-DD.txt` (geral) e `links_<busca>.txt` (por termo). `python scripts/minerador.py txt --pasta <pasta>` regera os .txt.
+## iPhone — o agente opera o app (caminho principal)
+Use a ferramenta de controle do iPhone que você (agente) já tem nesta máquina. Fluxo por termo de busca:
+
+1. Abrir o app **SHEIN** → aba **Perfil** → **Affiliate & Creator** (alternativa: barra de busca da aba Loja → `afiliado`). Deve abrir a Central: título **Programa de Afiliados**, saldo, **Pesquisar produtos**.
+2. **Pesquisar produtos** → digitar o termo (ex.: `vestido`) → Pesquisa.
+3. Para cada produto da lista (de cima para baixo, rolando quando acabar):
+   1. Consultar `python scripts/registrar.py --pasta <pasta> --status` de vez em quando e pular títulos já registrados.
+   2. Tocar em **Ganhe** → painel **Compartilhe para ganhar**.
+   3. Tocar em **Copiar** (copia o texto inteiro: "Não perca esta oferta…", 💰Preço, 🛒título, 🎁cupom e o link) e fechar o painel pelo **X** (o "voltar" sai da busca).
+   4. Registrar: `python scripts/registrar.py --pasta <pasta> --categoria <termo> --clipboard`
+      - Se o clipboard do celular não chegar no computador, leia o texto do painel na tela e passe por arquivo: `--arquivo texto.txt` (ou pela entrada padrão). Pode juntar vários produtos num texto só.
+   5. Resposta: `NOVO` (ok), `REPETIDO` (siga), `PAREI` (código 2: outra afiliada → pare e avise).
+   6. Pausa aleatória de 3–8 s.
+4. Ao bater a meta do termo (`quantidade_alvo` ÷ número de buscas), voltar à Central e ir para o próximo termo.
+5. Comece com **10 links de teste**, mostre à pessoa, e só então siga até a meta. Informe o progresso a cada 50.
+
+## Android — automático pelo adb (alternativa)
+Celular Android no USB com **Depuração USB** (Xiaomi: também "Depuração USB (configurações de segurança)"), app SHEIN logado na conta de afiliada:
+```bash
+python scripts/minerador.py --pasta <pasta> > <pasta>/saida/log.txt 2>&1
+```
+Vigie o log por `CAPTCHA|pediu login|PAREI|NÃO é de afiliada|outro app|Traceback|Pronto`. Rodar de novo continua de onde parou.
+
+## Entrega
+- `<pasta>/saida/links_shein_AAAA-MM-DD.txt` (todos, uma mensagem por produto, linha em branco entre elas) e `links_<termo>.txt`.
+- Refazer os .txt: `python scripts/registrar.py --pasta <pasta> --txt`.
+- Esse .txt é o que vai para o agendador de mensagens do WhatsApp (cada bloco = uma mensagem).
 
 ## Ritmo esperado
-~25–30 s por link (pausas incluídas) → 100 links ≈ 50 min; 300 ≈ 2h30.
+Android automático: ~25–30 s por link (100 ≈ 50 min). iPhone pelo agente: depende da ferramenta de controle; mantenha as pausas.
 
-## Quando algo dá errado
-Veja `references/solucao-de-problemas.md` (mensagens do script, telas do app, layout da Central).
+Mais detalhes: `references/aparelho.md` (preparar iPhone/Android) e `references/solucao-de-problemas.md` (mapa do app, mensagens e lições).
